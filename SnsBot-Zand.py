@@ -3,16 +3,12 @@ import os
 import re
 import sys
 
-import time
-import datetime
-
-from twisted.internet import protocol, reactor, defer
+from twisted.internet import protocol, reactor
 from twisted.protocols import basic
 from twisted.python import log
 from twisted.words.protocols import irc
 
-
-class zandronumProcessProtocol(protocol.ProcessProtocol):
+class ZandronumProcessProtocol(protocol.ProcessProtocol):
 	lre = {}
 	irc = None
 
@@ -30,14 +26,14 @@ class zandronumProcessProtocol(protocol.ProcessProtocol):
 			self.lre[k] = re.compile(v)
 
 	def connectionMade(self):
-		log.msg('zandronum server starting up.')
+		log.msg('Zandronum server starting up.')
 
 	def processExited(self, reason):
-		log.msg('zandronum server exited. Reason: {0}'.format(reason))
+		log.msg('Zandronum server exited. Reason: {0}'.format(reason))
 
 	def processEnded(self, reason):
-		log.msg('zandronum server ended. Reason: {0}'.format(reason))
-	
+		log.msg('Zandronum server ended. Reason: {0}'.format(reason))
+
 	def errReceived(self, data):
 		for line in data.splitlines():
 			log.msg(line)
@@ -113,102 +109,35 @@ class zandronumProcessProtocol(protocol.ProcessProtocol):
 			if addr:
 				log.msg('Server listening on {0}.'.format(addr.group(0)))
 
-
-
-
-
-
-
-
-
-
 class HissyIRCClient(irc.IRCClient):
-	nickname = 'EUFNF-Bot'
+	nickname = 'SNS-Bot'
 	channel = None
-
-
-	def got_names(self, nicklist):
-		#log.msg(nicklist)
-		nicklist = ' '.join(nicklist)
-		nicklist = re.sub('[@%+]', '', nicklist)
-		self.sendLine("PRIVMSG %s :%s" % (self.channel, nicklist))
-		self.sendLine("PRIVMSG %s :%s" % (self.channel, "Come play [UK] -->Grandvoid--> EURO FRIDAY NIGHT FRAGFEST #214 - Legendary CTF ( 109.74.206.218:17009 )"))
 
 	def signedOn(self):
 		log.msg("Connected to IRC server.")
 		self.channel = self.factory.channel
 		self.join(self.channel)
-		self.mode(self.nickname, True, '+BDLT-w', limit=None, user=self.nickname)
 
 	def joined(self, channel):
 		log.msg("Joined channel {0}.".format(channel))
-		if datetime.date.today().strftime("%w") == '5' and datetime.datetime.now().strftime("%H-%M") == '17-59':
-			time.sleep(30)
-			self.names(channel).addCallback(self.got_names)
 
 	def privmsg(self, user, channel, msg):
 		process = self.factory.process
 		if process and user.find('!') != -1:
 			nick = user[:user.find('!')]
 			if channel != 'AUTH' and nick not in [self.nickname, 'Global']:
-				if msg[:6] == '.rcon ':
-					cmd = re.sub('^\.rcon ', '', msg)
-					log.msg(''.join(['IRC => RCON: ', cmd]))
-					process.transport.write(''.join([cmd, '\n']))
-					return
 				cmd = ''.join([
-						'say_bot "<', escape(nick), ' @ ', channel, '>: ', escape(msg), '"'])
+						'say "', channel, ' <',
+						escape(nick), '> ',
+						escape(msg), '"'])
 				log.msg(''.join(['IRC => ST: ', cmd]))
 				process.transport.write(''.join([cmd, '\n']))
-
-
-
-
-
-#class NamesIRCClient(irc.IRCClient):
-	def __init__(self, *args, **kwargs):
-		self._namescallback = {}
-
-	def names(self, channel):
-		channel = channel.lower()
-		d = defer.Deferred()
-		if channel not in self._namescallback:
-			self._namescallback[channel] = ([], [])
-
-		self._namescallback[channel][0].append(d)
-		self.sendLine("NAMES %s" % channel)
-		return d
-
-	def irc_RPL_NAMREPLY(self, prefix, params):
-		channel = params[2].lower()
-		nicklist = params[3].split('%/')
-
-		if channel not in self._namescallback:
-			return
-
-		n = self._namescallback[channel][1]
-		n += nicklist
-
-	def irc_RPL_ENDOFNAMES(self, prefix, params):
-		channel = params[1].lower()
-		if channel not in self._namescallback:
-			return
-
-		callbacks, namelist = self._namescallback[channel]
-		for cb in callbacks:
-			cb.callback(namelist)
-
-		del self._namescallback[channel]
-
-
-
-
 
 class HissyIRCClientFactory(protocol.ClientFactory):
 	protocol = HissyIRCClient
 	process = None
 	connection = None
-	
+
 	def __init__(self, channel):
 		self.channel = channel
 
@@ -235,34 +164,37 @@ def irccolorize(string):
 		'm': '14', 'n': '11', 'o': '7', 'p': '3', 'q': '3', 'r': '5',
 		's': '5', 't': '13', 'u': '14', 'v': '11'
 		}
-	
+
 	codes = re.finditer('(\x1c[A-Va-v])', string)
 	for code in codes:
 		codestr = code.group(1)
-		string = string.replace(codestr, ''.join(['\x03', colors[codestr[1].lower()]]), 1)
+		string = string.replace(codestr, ''.join(
+				['\x03', colors[codestr[1].lower()]]), 1)
 
 	return string
 
 def main(cmd = None):
 	# Check to see if we actually have a valid command
 	if not cmd:
-		print "You need to run hissy with a command. (e.g. zandronum-server)"
+		print("You need to run hissy with a command. (e.g. zandronum-server)")
 		return 1
 
 	log.startLogging(sys.stdout)
 
-	zandronum = zandronumProcessProtocol()
-	hissyirc = HissyIRCClientFactory('#fnf')
+	zandronum = ZandronumProcessProtocol()
+	hissyirc = HissyIRCClientFactory('#coop')
 
-	hissyirc.process = zandronum
+	hissyirc.process = zandronum # skulltag
 	zandronum.irc = hissyirc
 
 	# Connect to IRC
-	reactor.connectTCP('mancubus.zandronum.com', 6667, hissyirc)
+	reactor.connectTCP('irc.zandronum.com', 6667, hissyirc)
 
-	# Start the zandronum server
+	# Start the Skulltag server
 	path = os.path.normpath(os.getcwd() + '/' + cmd[0])
 	head, tail = os.path.split(path)
+	
+	path = '/home/zandronum/zandronum-server'
 	log.msg("Spawning {0}...".format(' '.join([path] + cmd[1:])))
 	reactor.spawnProcess(zandronum, path, [path] + cmd[1:])
 	reactor.run()
