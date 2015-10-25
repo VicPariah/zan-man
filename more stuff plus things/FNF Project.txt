@@ -1,0 +1,9 @@
+-Database will contain the FNF Event History
+-Python script, use pyodbc and mysql
+-IRC Bot to interface with database
+-Do stuff with database like you did with FNF in skulltag!
+	-ideas:
+		1.) Total # of events per gamemode
+		2.) Mods played?
+		3.) Look at the gamemode that has been neglected the most recently (could be multiple)
+		4.) ???
