@@ -1,0 +1,9 @@
+-Database will contain the FNF and SNS event histories, but the data needs to be fetched from all those .CFG files
+-Python script collects this data, use pyodbc and mysql (but be able to save locally to .csv file if there's no database)
+-IRC Bot will be modified to interface with this data
+-Do stuff with data like I did with FNF in skulltag! (How exactly did I do that...?  Can't remember...)
+	-possible stuff to do with .cfg data:
+		1.) calculate the # of events per gamemode, helps balance out randomization
+		2.) calculate mods played and its corresponding numbers
+		3.) look at the date of event (if there happens to be an event # with it) and see what has been neglected the most recently
+		4.) ???
