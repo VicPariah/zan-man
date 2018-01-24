@@ -1,0 +1,4 @@
+./zandronum-server \
+-iwad &iwad& \
+-port &defaultport& \&files&\
++exec ./&subcluster&/&subcluster&.cfg

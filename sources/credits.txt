@@ -1,0 +1,8 @@
+Credits to the following people:
+
+Affliction, for helping with Armada GameServer and creating run.py
+Nicholas "Tiger" Gautier, for creating the GlobalSettings configuration tool for Skulltag
+Konar6, thank you so much for creating hissy.py for Skulltag FNF
+Jenova, for the inspiration from his BestEver server host bot
+AlexMax, for his success with making an IRC-to-Skulltag chat bot many years ago which inspired the creation of hissy.py by Konar6
+Achtung, for inspiring all of us with his Zdaemon web-hosting tool from early 2000's
