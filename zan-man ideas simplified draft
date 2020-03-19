@@ -1,0 +1,465 @@
+***********************************************************************************************************************************
+PROJECT BREAKDOWN:
+
+Script A: Server Manager (me)
+Script B: Player-to-Server Interactions (Matt)
+Script C: Site manager for multiple boxes / linodes, with ability to use different Server Manager user script per box (Matt)
+***********************************************************************************************************************************
+
+--------------------
+Script A breakdown: |
+--------------------
+Things to add to project later on:
+	1.) Server Statistics [table draft is kind of started already]
+	2.) Zandrnoum Version history (and a way to store all of them in one spot?)
+
+----------------------------
+| DATABASE TABLE STRUCTURE |
+----------------------------
+
+TABLE 1: IWADs
+
+Column 1: Primary Key (just in the order it was added to the database)
+Column 2: Name of IWAD
+Column 3: MD5SUM of IWAD
+Column 4: Full map rotation list
+
+Primary Key: Column 1 (because we won't be adding multiple iwad files in here, like, ever)
+
+
+TABLE 2-1: PWADs
+
+Column 1:  Primary Key
+Column 2:  Collection number
+Column 3:  Title of the collection of files for this map pack or mod
+Column 4:  Name of file
+Column 5:  MD5SUM of PWAD
+Column 6:  Load order of file
+Column 7:  Classification Tier level for file
+Column 8:  Is this file updated or out of date?
+Column 9:  'mod' or 'map pack'
+Column 10: intended IWAD
+Column 11: if Column 8 == 'mod' then NULL, if column 8 == 'map pack', then compatible gamemodes
+Column 12: if column 8 == 'mod' then NULL, if column 8 == 'map pack', then MAPLIST
+# Column 11: Is this collection a WIP?
+Column 13: The date that the file was created
+Colunn 14: The date that the file was added to the database
+Column 15: Filesize of WAD (in kb i guess)
+Column 16: URL for Linode download
+Column 17: Additional notes about this file
+
+Primary Key: Columns 1, 2, 3, 4, and 5
+
+
+
+
+TABLE 2-2: Dependencies List
+
+Column 1: ID # for Table 2-3
+Column 2: Name of dependency file
+Column 3: MD5SUM of dependency file
+Column 4: Is this file updated or out of date?
+Column 5: URL for Linode download
+
+Primary Key: Column 1
+
+
+
+
+TABLE 2-3: WADS & their Dependencies
+
+Column 1: ID # from Table 2-1
+Column 2: ID # from Table 2-2
+
+Primary Key: Columns 1 & 2
+
+
+
+
+TABLE 3-1: Server Variations
+
+Column 1:  Variation ID #
+Column 2:  Title of Server Variation
+Column 3:  Gamemode of Server Variation
+Column 4:  Starting Port # for this Variation
+Column 5:  Maximum # of servers for variation
+Column 6:  Max Players for Variation
+Column 7:  Max Clients for Variation
+Column 8:  DMFLAGS
+Column 9:  DMFLAGS2
+Column 10: DMFLAGS3
+Column 11: COMPATFLAGS
+Column 12: COMPLATFLAGS2
+Column 13: Friendly Fire (number, default 0)
+Column 14: Unmodded or Mixed
+Column 15: Server Variation MOTD
+Column 16: Does this Variation require a connect password?
+Column 17: Does this Variation require a join password?
+Column 18: Is this server private?
+Column 19: If Col 8 & Col 9 = FALSE, 0; otherwise, number of days per password reset
+Column 20: Enable Server Rotation?
+Column 21: If Server Rotation is TRUE, then number of servers to rotate per week
+Column 22: If Server Rotation is TRUE, then number of days per rotation
+Column 23: If (Col 19 > 0) || (Col 20 == TRUE) then time of day which to perform these operations on these days
+Column 24: Pool this Variation for the Marathon (if Marathon is enabled?) (Boolean)
+Column 25: Check for the Marathon Variation
+
+Primary Key: Column 1
+
+
+
+
+TABLE 3-2: Variation Wad Preloading List
+
+Column 1: Variation ID #
+Column 2: ID from Table 2-1
+Column 3: Load order of file
+
+Primary Key: Column 1, 2, and 3
+
+
+
+TABLE 4: Combinations List & Statistics (can use SQL queries to calcuate these stats)
+
+Column 1:  ???
+Column 2:  ???
+Column 3:  ???
+Column 4:  Number of hours server up, across all servers
+Column 5:  Number of hours server inactive (could possibly be readable by checking arbitrary map reset on all players disconnect?)
+Column 6:  Average number of hours server up per server run
+Column 7:  Average number of players in the server (average of averages, i guess, also is this even possible)
+Column 8:  Max Average number of players in the server
+Column 9:  Date + time that the Max Average was achieved
+Column 10: Peak Average
+Column 11: Max Peak
+Column 12: Date + time that the Max Peak was achieved
+Column 13: Number of times the server has been run
+Column 14: Date the Server was first run
+Column 15: Date the Server was last run
+
+Primary Key: Column 1
+
+-------------------
+|    GAMEMODES    |
+-------------------
+CO-OP:      coop and survival co-op gamemodes
+INVASION:   invasion gamemode
+CTF:        capture the flag, one flag ctf gamemodes
+SKULLTAG:   skulltag gamemode
+DEATHMATCH: deathmatch, team deathmatch, possession, team possession, terminator gamemodes
+LMS:        last man standing, team last man standing gamemodes
+DUEL:       duel map packs
+TEAMGAME:   acs-based gamemodes
+DOMINATION: domination map packs
+RJUMPING:   rocket jump wads
+MISC:       was thinking of not putting this, since for co-op I don't want things like jumpmaze or WDI to be put in there
+
+--------------------
+|  IRC BOT SCRIPT  |
+--------------------
+-This script is for everything that *requires* user interaction.
+
+Structure:
+	1.) CONNECTION SCRIPT: ALEXMAX'S AND KONAR6'S CODE GOES HERE; PUT THE PARTS NEEDED TO CONNECT ONLY!
+	2.) BOT COMMANDS FOR DATABASE STUFF:
+		IWAD STUFF:
+			a.) .addIWAD [wadname], [MAPLIST]
+		PWAD STUFF:
+			a.) .addColl [collection]
+				-where [collection] is in the format:
+					[Collection Title], [wadname1, wadname2, .... , wadnamen(1/2)], [mod or map pack], [intended IWAD], [Gamemode], [MAPLIST]
+			b.) .updatePWAD [Collection String Name], [wadname], [CollectionTitle=?, Wadname=?, Type=?, intIWAD=?, Gamemode=?, MAPLIST=?]
+			c.) .addURL [Collection String Name], [wadname], [url]
+			d.) .delPWAD [Collection String Name], [wadname]
+			e.) .delColl [Collection String Name]
+		DEPENDENCY STUFF:
+			a.) .AddDependency [depname], [URL]
+			b.) .AddDependenciesForFile [wadname], [dep1, dep2, .... , depn]				
+			c.) .removeDependenciesforFile [wadname]
+		EXTANEOUS FUNCTIONS:
+			a.) .fileExists [wadname]
+			b.) .fetchMD5SUMS
+			c.) .findWAD [md5sum]
+			d.) .fetchFileCreationDates
+			e.) .numCollections
+			f.) .numPWADS
+	3.) BOT COMMANDS FOR SERVER STUFF:
+		VARIATION MANAGEMENT:
+			a.) .createVar [Server Variation Title], [Gamemode for Variation], [Max # of Servers for Variation], [Max Players], [Max Clients]
+			b.) .CoreSettings [Server Variation Title], [VarTitle=?, VarGamemode=?, VarMPlayers=?, VarMClients=?]
+			c.) .VarForceIWAD [Server Variation Title], [(NOT) IWAD, or 'any']
+			d.) .VarForcePWADs [Server Variation Title], [wadname1, wadname2, .... , wadnamen]
+			e.) .VarRemoveForcedPWADS [Server Variation Title]
+			f.) .VarFlags [Server Variation Title], [DMFLAGS], [DMFLAGS2], [DMFLAGS3], [COMPATFLAGS], [COMPATFLAGS2]
+			g.) .VarTDamage [Server Variation Title] [Team Damage value]
+			h.) .VarModSettings [Server Variation Title], ["mods allowed", "no mods allowed", "mix it up"]
+			i.) .VarMOTD [Server Variation Title], [MOTD]
+			j.) .requireVarPassword [Server Variation Title], [Connect or Join] [# Days that this password will last before automatic reset, default value = 0 for permanent password]
+			k.) .varRotation [Server Variation Title] ["on", "off"]
+			l.) .addVarToMarathonPool [Server Variation Title] ["on", "off"]
+			m.) .createMarathon [Server Variation Title], [Max # of servers for Marathon Variation]
+			n.) .delVar [Server Variation Title]
+			o.) .varInfo [Server Variation Title]
+		HOSTING STUFF:
+			a.) .hostVar [Server Variation #, or Server Variation Title (i guess)] [Number of Servers to host] [VarTitle=?, VarGamemode=?, ... , COMPATFLAGS2=?, TEAMDAMAGE=?, MODS=?]
+			b.) .hostServer [wadname1, wadname2, .... , wadnamen] [Server Variation #]
+		IDIOT MANAGEMENT:
+			.findIPof ["Player Name"]
+			.findPlayersWithIP [IP in format xxx.xxx.xxx.xxx]
+			.banIdiot ["Player Name", or IP]
+
+Uses:
+	1.) Add to DB (stored as Zandronum Server Data Tuple -> converted to format used in DB titled "LIST OF IWADs AND PWADs"
+	2.) Commands:
+		a.) Check if a file exists in the database
+		b.) Check if a MD5SUM is in the database -- if yes, then list the WAD file name.
+                c.) Allow to SELECT from table
+                d.) Perhaps allow manipulation of table.. *perhaps*
+	3.) Perhaps the ability to manually perform anything in the "Core Project"
+	4.) Ability to kill servers
+	5.) Be able to use the bot to check a server (chat input will be server command)
+		-This will require good authentication. Ideas include (thanks to Dusk and Water for input)
+			a.) Look at hostname
+			b.) Check the full /whois [although this is kind of tricky b/c stuff can change]
+			c.) ???
+
+--------------------
+|  "Core Project"  |
+--------------------
+-This script is for everything that is *automated* -- that is, requires zero user interaction.
+
+Uses:
+	1.) Automate the checking of popularity
+		-Possible methods:
+			a.) Check file log size?
+			b.) # people / # hours that server has been up for
+			c.) counting the number of
+			d.) combination of a, b, and c, and anything else i might think of
+	2.) Automate the process of Hard Drive Space monitoring / tidying
+		-This is covered in a verbose manner below
+	3.) Automate Server Rotation Process
+		-This is also covered below
+	4.) Automate the process of Total Reset
+		-That is, to reset all servers, but not randomize.  Basically like Armada's (another server cluster) run.py script
+	5.) Randomization.
+		a.) "Completely random"
+		b.) We make up a beautiful way to equalize exposure to mods (less of really popular ones, more of less popular ones)
+		c.) neither a or b (just a list of custom configurations)
+	6.) The ability to add custom flags per map per mappack?? (ie. no freelook on map30 for icon of sin)
+		-Add a way to reverse the command.
+			a.) add a "Stop!" command
+				1.) The command will be a randomly generated word per server (to prevent abuse)
+					-words can come from a plaintext dictionary [text file]
+				2.) This command will be displayed through the motd (if enabled)
+
+***********************************************************************************************************************************
+------------------------------------------------|
+|CLASS STRUCTURE FOR THE ACTUAL SERVER MANAGER  |
+|-----------------------------------------------|
+|Class Name: Server Manager                     |
+|                                               |
+|-Class Variables:                              |
+|      -List of ACTIVE Zandronum Server Objects |
+|-Class Functions:                              |
+|      -Add a server                            |
+|      -Remove a server                         |
+|      -Kill all servers                        |
+|-----------------------------------------------|
+Class Name: Zandronum Server Object (maybe this could eventually be considered a more generic version, with Port as a class var)
+
+-Class Variables:
+	-PID
+	-start string
+	-Zandronum Server Data Tuple
+
+
+Tuple Name: Zandronum Server Data Tuple
+
+-Tuple Variables:
+	-IWAD
+	-PWAD file names (whether or not map pack or mod is irrelevant here)
+	-Dmflags [DMFLAGS, DMFLAGS1, DMFLAGS2, COMPATFLAGS, COMPATFLAGS2]
+	-Gamemode
+	-Variation
+
+
+(from above)
+-IWAD
+-PWAD(s):
+	1.) Map Pack
+	2.) Game modification
+-DMFLAGs:
+	1.) DMFLAGS
+	2.) DMFLAGS1
+	3.) DMFLAGS2
+	4.) COMPATFLAGS
+	5.) COMPATFLAGS2
+-Game Mode
+-Gamemode-related CVARS
+-Admin/Server CVARS
+-OPTIONAL:
+	1.) MAPLIST
+	2.) Game modification
+		PWAD spefific CVARS
+
+
+***********************************************************************************************************************************
+Script B breakdown:
+
+-------------------------------
+|  Player-Server interactions |
+-------------------------------
+| -The IRC bot can add option |
+|    to allow in-server chat  |
+|    in the form of server    |
+|    interactions.            |
+| -Polls, suggestions, etc.   |
+| -Through Server, IRC, (site)|
+| -This was a suggestion to me|
+-------------------------------
+
+
+
+***********************************************************************************************************************************
+ This was written long before the above stuff was written.  It's sort of just hidden on the bottom just in case I need to look back
+ on it to see if I have possibly forgotten anything that I may have wanted in this project at the start.
+***********************************************************************************************************************************
+
+
+Okay, so what this project will have is:
+
+1.) A version of Best-Ever that can be run entirely through IRC only
+	- Gives the option of adding in a iwad, wad, or mod, in simple command through IRC
+	- Only certain people will have the ability to utilize the bot.
+	- You can view all of the servers that are currently running through a command, and you can choose to kill any server at will
+	  (like BE-bot does)
+		- For viewing the servers, suppose you are viewing your servers using this command as described.  You should be able
+		  to determine the following:
+			1.) Whether or not a particular server was added through a saved slot (and see what slot # it is), or if it
+			    was randomly generated (and see the command)
+				-If the server was randomly generated, be able to save the server in a slot, for future use.
+			2.) Full server information.  So, this could be its own command.  Basically, .info 30 and you could see all
+			    of the information for server #30 there is.
+			3.) Perhaps, as a extra feature in the future, see the memory usage, cpu usage, etc. for each server.  Like
+			    an htop command for only your server cluster
+			4.) Anything else I might have missed.
+	- You can save as many server slots as possible, exactly like in BE-bot
+	- Now, this is important.  With over a hundred wads, I don't have nearly enough space to store every single wad.  So, what
+          I will do instead is..
+		- When I want to host any server, what I will do is I will specify the name of the wads, like .host does in BE-bot.
+		  However...
+			- Instead of storing the wads permanently on the HDD, I will actually try to implement a simple system as
+			  such:
+				- When we add in a pwad or mod to our database of files, we will have attached a URL to each of
+				  them.  This will basically be the download path
+				  for the files.  So, when we start a server, we will:
+					1.) Download the file(s)
+					2.) Host the server
+					3.) When the server is dead, we will automate the process of removing the file from the HDD.
+					4.) There will be restrictions.  Here is how we will manage space.
+						- Look at the size of the file(s), and see if there is enough space first to
+						  download it.
+						- If the file size (or total file size, if multiple files) is small (meaning, it
+						  won't take more than a second for
+						  it to download the group of files):
+							- We will just follow the normal procedure
+						- However, if the file size is *relatively small* (meaning, it takes up less than
+						  some percentage of HDD space [this will be a variable in our code,] but it will
+						  take quite a bit of time to download, say the dtinv music file, considering this
+						  takes up a lot of time to download and there could be a lot of servers to run at
+						  once, this adds up quickly):
+							- We will use the following system.
+								- Download the wad if this is the first appearance of it on the HDD.
+								- But, after we shut down the server, don't delete the file.
+								- After a certain amount of time has passed, if the wad hasn't been
+								  run since, delete it from the HDD.
+						- Now, in order for this to be considered practical, we would have to really keep
+						  track of the HDD space.  So, if we reach a critical level and there is only a
+						  certain amount of space left (make this a variable, say, 5%), then we will have to
+						  do a cleanup as such:
+							- Increase the variable for the percentage of HDD space for each file by a set
+							  number.  Determine how much space that would save us, and if that is more
+							  than a set percentage of hard drive space (say, 40% or greater), then we
+							  will remove those files, and increase the percentage.  Then, the next time
+							  someone tries to host those files, we can cache those files instead of
+							  permanently storing them.
+	- Add a server randomizer command
+		- First you need to store the list below, as shown.  IWADS, PWADS, and MODS (okay, in the WADs list below IWADS and
+		  WADS are mixed together :\)
+			- In this list, you can store in "override settings", basically extra commands that must be set no matter what
+			  (say, jumping or crouching, or some other extraneous commands from mods like Samsara, for instance)
+			- For each item, you will have to store the names of the wads, and attach urls to each of them.
+		- Then, you choose the number of servers to run.
+		- You can choose to exclude certain mappacks.  Specify them as numbers (eg. 1-19, 40-100, mod 1-4)
+		- Then, you can specify if you want to:
+			1.) use default dmflags
+			2.) or choose your own (and the added ability to override the settings in the "override settings" shown above)
+			3.) or actually choose to completely randomize the flags as shown in the process at the very bottom of this
+			    file
+		- When hosting each server, follow the same procedure for hosting the server as mentioned above.
+	- Add the ability to "rotate" the servers on a weekly basis (or daily, user specified information).
+		- Basically, you can allow the server host to change a specified number of servers every x days.  It could be almost
+		  like a "weekly challenge" or a "daily challenge".
+		- Be able to do do this *more than once* on the cluster.  Perhaps someone would like the ability to have both "daily
+		  challenge" servers and "weekly challenge" servers.
+		- Allow the user to give a special name to the special set of servers so it can be viewed easily in the custom
+		  server-viewing command as shown above.
+		- We need to also work on the format for specifying the time period.  This could be a certain amount of time
+		  (eg. 7days, 1day, 1hour, 1day1hour, etc.)
+		- For now, the only way I can think of making this work is if it was a randomized server.  You can then tell the user
+		  to basically input the randomizer command that he would like to have run in this special command.
+		 (eg. .(automated server change command) 7days [insert randomizer command here] "Weekly Challenge!"
+	- List of BE-bot commands that will be useful on this IRC-only bot:
+		.commands
+		I don't know what .file is, but it could be, in our bot, replaced with the .addfile command as shown above?
+		.kill
+		.load
+		.save
+		.servers (this shows the # of servers running total.  This could be changed to be our servers command as shown above)
+		.slot
+		.uptime
+		.whoami (?? I don't know if this is useful, basically take the authentication system in BE-bot as a basis)
+		NOTE: There is also a part of BE-bot that deals with server activity.  This might be something really worth expanding upon.
+		      Basically, they use this "kill inactive servers" command that will kill servers that are more than x days inactive,
+		      and I have no idea how they determine whether or not a server is inactive, but this might actually be useful for not
+		      just killing inactive servers but also for other purposes (ie. managing hard disk space on wads that aren't ever
+		      played, automatically killing these inactive servers, and also "red flagging" the wad/mod as being inactive which can
+		      affect the server randomizer.)
+
+
+
+------------  --------------------   ------------------------------
+|  IRC BOT  |  |   CORE PROJECT   |  | Zandronum Server Data Tuple |
+------------  --------------------   -------------------------------
+|  DO LATER |  | Details about    |  | -IWAD                       |
+|           |  | what the project |  | -PWAD(s):                   |
+|           |  | will do go here. |  |     1.) Map Pack            |
+------------   -------------------   |     2.) Game modification   |
+                                     | -DMFLAGs:                   |
+----------------------------------   |     1.) DMFLAGS             |
+|     LIST OF IWADs AND PWADs     |  |     2.) DMFLAGS1            |
+----------------------------------   |     3.) DMFLAGS2            |
+| 1.) iwad or pwad                |  |     4.) COMPATFLAGS         |
+| 2.) MD5SUM of file              |  |     5.) COMPATFLAGS2        |
+| 3.) if iwad,                    |  | -Game Mode                  |
+|              leave blank        |  | -Gamemode-related CVARS     |
+|     if pwad,                    |  | -Admin/Server CVARS         |
+|     map pack or mod             |  | -OPTIONAL:                  |
+| 4.) if iwad,                    |  |     1.) MAPLIST             |
+|              leave blank        |  |     2.) Game modification   |
+|     if pwad,                    |  |           PWAD spefific     |
+|              if mod,            |  |	         CVARS             |
+|                      blank      |  -------------------------------
+|              if map pack,       |
+|     list of compatible gamemodes|
+|     (note in format compatible  |
+|       for taking in from the    |
+|       database and analysing the|
+|       string to get gamemodes.) |
+| 5.) if iwad or map pack,        |
+|     maplist (same note as above)|
+|     if mod,                     |
+|              leave blank        |
+| 6.) REQUIRED LINES OF TEXT FOR  |
+|       THE CONFIG FILE           |
+-----------------------------------
