@@ -1,0 +1,9 @@
+//Server Map Rotation
+//=================================
+SV_MapRotation True;
+SV_RandomMapRotation False;
+AddMap D2INV1;
+AddMap D2INV2;
+AddMap D2INV3;
+AddMap D2INV4;
+AddMap D2INV5;
