@@ -1,4 +1,4 @@
-﻿# File Created April 23, 2020 (give or take one day)
+# File Created April 23, 2020 (give or take one day)
 ##
 ### Zandronum Cluster Configuration Manager (Zan-Man) PowerShell Edition
 ##
@@ -633,10 +633,11 @@ $script =
             $full_title = Parse_ZanCFG $start $server $config $zandir $greedy $revert
             Start-Sleep -s 2
             # We can't have the following characters in filenames: \ / : * ? " < > |
-            $server_dir = $server -Replace '[\\/:*?"<>|]', ""
+            $server_dir = $server -Replace '[\\/:*?"<>|]', "" -Replace "/", "\"
             $folderpath = $PSScriptRoot + "/TMP-Confs/" + $server_dir + "/"
-            $server_info = $full_title[$full_title.Length - 1] -Replace "^(.+[^%])%LOGFILENAME%([^%].+)$", '$1' -Replace '[\\/:*?"<>|]'. ""
-            $fixedpath = $folderpath -Replace $server_dir, $server_info # TODO: Find out why it's index 17 heh (DONE)
+            $server_info = $full_title[$full_title.Length - 1] -Replace "^(.+[^%])%LOGFILENAME%([^%].+)$", '$1'
+            $server_info_dir = $server_info -Replace '[\\/:*?"<>|]', "" -Replace "/", "\"
+            $fixedpath = $folderpath -Replace $server_dir, $server_info_dir # TODO: Find out why it's index 17 heh (DONE)
 #           Move-Item -Force $folderpath, $fixedpath
             $cmdPATH = ($PSScriptRoot + "\" + $server_dir + ($start.Substring($PSScriptRoot.Length))) #-Replace "(^.+\\)[^\\]+\\$", '$1'
             $bwd = [Boolean]1
@@ -685,6 +686,7 @@ $script =
         # .donothost must be searched FIRST because if it's there, we do not run the rest of this function.
         $append = [Boolean]0
         $prepend = [Boolean]0
+        $pend_type = "" # "ap" or "pre"
         $prepend_list = ""
         $append_list = ""
         $cmd_servers = ""
@@ -721,20 +723,23 @@ $script =
                                     switch -regex ($_) {
                                         "PREPEND_ALL::" {
                                             $prepend = [Boolean]1
+                                            $pend_type = "pre"
                                         }
                                         "APPEND_ALL::" {
                                             $append = [Boolean]1
+                                            $pend_type = "ap"
                                         }
                                         "-file.*" {
-                                            if ($prepend) {
+                                            if ($pend_type -eq "pre") {
                                                 $prepend_list = $prepend_list + $_ + " "
                                             }
-                                            if ($append) {
+                                            if ($pend_type -eq "ap") {
                                                 $append_list = $append_list + $_ + " "
                                             }
                                         }
                                     }
                                 }
+                                $pend_type = ""
                             }
                         }
                     }
